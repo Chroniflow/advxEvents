@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "advx-anecdotes",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-07-24",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CONTENT",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "advx-anecdotes-media"
+    }
+  ],
+  "vars": {
+    "ADMIN_GITHUB_USERS": "icebraker",
+    "APP_ORIGIN": "http://localhost:5173"
+  }
+}
