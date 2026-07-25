@@ -12,6 +12,6 @@ export const keys = {
   operation: (operationId: string) => `operations:${operationId}`,
   session: (digest: string) => `sessions:${digest}`,
   oauthState: (digest: string) => `oauth-state:${digest}`,
+  asset: (assetId: string) => `assets:${assetId}`,
   audit: (timestamp: string, eventId: string) => `audit:${timestamp}:${eventId}`,
 };
-

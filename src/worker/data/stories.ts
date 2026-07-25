@@ -106,6 +106,26 @@ export class StoryRepository {
     return this.getRevision(storyId, record.publishedRevisionId);
   }
 
+  async getCurrentRevision(storyId: string): Promise<StoryRevision | null> {
+    const record = await this.getStory(storyId);
+    if (!record) return null;
+    return this.getRevision(storyId, record.currentRevisionId);
+  }
+
+  async listOwner(githubId: string, limit = 100): Promise<StoryRevision[]> {
+    const list = await this.kv.list({
+      prefix: `indexes:owner:${githubId}:`,
+      limit,
+    });
+    const revisions = await Promise.all(
+      list.keys.map(({ name }) => {
+        const storyId = name.split(":").at(-1);
+        return storyId ? this.getCurrentRevision(storyId) : null;
+      }),
+    );
+    return revisions.filter((item): item is StoryRevision => item !== null);
+  }
+
   async listPublished(limit = 50): Promise<StoryRevision[]> {
     const list = await this.kv.list({ prefix: "indexes:published:", limit });
     const revisions = await Promise.all(
