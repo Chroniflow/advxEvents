@@ -10,6 +10,8 @@ export const keys = {
   ownerIndex: (githubId: string, storyId: string) =>
     `indexes:owner:${githubId}:${storyId}`,
   operation: (operationId: string) => `operations:${operationId}`,
+  session: (digest: string) => `sessions:${digest}`,
+  oauthState: (digest: string) => `oauth-state:${digest}`,
   audit: (timestamp: string, eventId: string) => `audit:${timestamp}:${eventId}`,
 };
 
