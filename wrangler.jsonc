@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "advx-anecdotes",
+  "name": "advx-events",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-07-24",
   "keep_vars": true,
