@@ -1,3 +1,5 @@
 GITHUB_CLIENT_ID=replace-with-github-oauth-client-id
 GITHUB_CLIENT_SECRET=replace-with-github-oauth-client-secret
 SESSION_SECRET=replace-with-at-least-32-random-characters
+ADMIN_GITHUB_USERS=replace-with-comma-separated-github-logins
+APP_ORIGIN=http://localhost:8787

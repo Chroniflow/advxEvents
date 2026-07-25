@@ -15,7 +15,7 @@ npm run dev:client
 
 ```bash
 cp .dev.vars.example .dev.vars
-# 填写 GitHub OAuth 开发应用信息和随机 SESSION_SECRET
+# 填写 GitHub OAuth 开发应用信息、管理员账号和随机 SESSION_SECRET
 npm run dev
 ```
 
@@ -25,26 +25,34 @@ npm run dev
 http://localhost:8787/api/auth/github/callback
 ```
 
-## Cloudflare 资源
+## 通过 Cloudflare Dashboard 部署
 
-登录并创建生产资源：
+仓库中的 `wrangler.jsonc` 只描述 Worker 入口和绑定契约，不包含部署者的资源 ID、桶名、账号或密钥。部署时不需要编辑仓库。
 
-```bash
-npx wrangler login
-npx wrangler kv namespace create CONTENT
-npx wrangler r2 bucket create advx-anecdotes-media
-npx wrangler secret put GITHUB_CLIENT_SECRET
-npx wrangler secret put SESSION_SECRET
-```
+1. 在 Cloudflare Dashboard 的 **Workers & Pages** 中导入 GitHub 仓库并选择生产分支。
+2. 将构建命令设为 `npm run build`，部署命令设为 `npx wrangler deploy`。
+3. 执行首次部署。Wrangler 会为草稿绑定自动配置 `CONTENT` KV 和 `MEDIA` R2；如需复用已有资源，可预先创建资源，并在 Worker 设置中确认同名绑定指向目标资源。
+4. 打开 Worker 的 **Settings > Variables and Secrets**，按下表添加运行时配置并部署这些设置。
+5. 在 GitHub OAuth App 中将回调地址设置为 `<APP_ORIGIN>/api/auth/github/callback`。
 
-将 KV 命令返回的 ID 替换 `wrangler.jsonc` 中的全零占位 ID。生产环境还需要：
+| 类型 | 名称 | 值 |
+| --- | --- | --- |
+| Variable | `GITHUB_CLIENT_ID` | GitHub OAuth App 客户端 ID |
+| Variable | `ADMIN_GITHUB_USERS` | 逗号分隔的引导管理员 GitHub 登录名 |
+| Variable | `APP_ORIGIN` | Worker 的公开 HTTPS Origin，不含末尾斜杠 |
+| Secret | `GITHUB_CLIENT_SECRET` | GitHub OAuth App 客户端密钥 |
+| Secret | `SESSION_SECRET` | 至少 32 个随机字符的会话签名密钥 |
 
-- 将 `APP_ORIGIN` 改为最终 HTTPS 站点地址。
-- 将 `GITHUB_CLIENT_ID` 配置为 Worker 变量。
-- 在 GitHub OAuth App 中将回调设置为 `<APP_ORIGIN>/api/auth/github/callback`。
-- 保留 `ADMIN_GITHUB_USERS=icebraker`，或用逗号加入其他不可降级的引导管理员。
+Worker 使用以下固定绑定名：
 
-GitHub Client Secret 和 Session Secret 只能通过 Wrangler secret 或 `.dev.vars` 提供，不应写入仓库。
+| 绑定名 | 资源 | 用途 |
+| --- | --- | --- |
+| `CONTENT` | Workers KV | 用户、会话、投稿、审核与资源元数据 |
+| `MEDIA` | R2 | 投稿图片对象 |
+| `LIKES` | Durable Object | 点赞账本与热门排行 |
+| `ASSETS` | Workers Static Assets | Vite 前端构建产物 |
+
+Workers Builds 中的构建变量只在构建期间可用，不会注入 Worker 运行时。上述变量和密钥必须添加到 Worker 的 **Variables and Secrets**，其中敏感值必须选择 **Secret** 类型。
 
 ## 验证
 
@@ -53,12 +61,6 @@ npm test
 npm run build
 npm run test:e2e
 npx wrangler deploy --dry-run
-```
-
-## 部署
-
-```bash
-npm run deploy
 ```
 
 Durable Objects 可在 Workers Free 计划使用 SQLite 存储。免费额度耗尽时相关操作会失败，不会自动产生账单；画廊会在热门排行不可用时回退到最新排序。

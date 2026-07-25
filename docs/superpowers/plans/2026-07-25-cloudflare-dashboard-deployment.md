@@ -14,6 +14,7 @@
 
 - 修改 `wrangler.jsonc`：保存可公开复用的 Worker 入口、草稿绑定和迁移契约。
 - 创建 `tests/unit/wrangler-config.test.ts`：锁定配置不含实例值、绑定名稳定、Dashboard 变量不会被部署覆盖。
+- 修改 `.dev.vars.example`：在移除 Wrangler `vars` 后继续提供完整本地运行时变量模板。
 - 修改 `README.md`：提供以 Cloudflare Dashboard 为主的简体中文 Git 部署与运行时绑定步骤。
 
 ### Task 1: 锁定开源 Wrangler 配置契约
@@ -131,9 +132,19 @@ git commit -m "feat: make Cloudflare bindings deployment-portable"
 ### Task 3: 编写 Dashboard Git 部署文档并完整验证
 
 **Files:**
+- Modify: `.dev.vars.example`
 - Modify: `README.md`
 
-- [ ] **Step 1: 重写 Cloudflare 资源与部署章节**
+- [ ] **Step 1: 补齐本地变量模板**
+
+在 `.dev.vars.example` 中加入：
+
+```dotenv
+ADMIN_GITHUB_USERS=replace-with-comma-separated-github-logins
+APP_ORIGIN=http://localhost:8787
+```
+
+- [ ] **Step 2: 重写 Cloudflare 资源与部署章节**
 
 README 必须明确写出：
 
@@ -151,35 +162,35 @@ Workers Builds 的构建变量不会注入 Worker 运行时，不能替代 Worke
 
 同时保留本地开发、权限、数据清理和验证说明；删除要求部署者替换 KV ID、修改 `wrangler.jsonc`、执行 `wrangler secret put` 的生产部署步骤。普通变量与 Secret 的名称、用途和敏感性必须与设计文档一致。
 
-- [ ] **Step 2: 扫描账号专属值和旧部署指令**
+- [ ] **Step 3: 扫描账号专属值和旧部署指令**
 
 Run: `rg -n "00000000000000000000000000000000|advx-anecdotes-media|icebraker|替换.*wrangler|secret put" README.md wrangler.jsonc`
 
 Expected: 无输出，退出码为 1。
 
-- [ ] **Step 3: 执行完整单元测试**
+- [ ] **Step 4: 执行完整单元测试**
 
 Run: `npm test`
 
 Expected: 所有测试文件和测试用例通过，退出码为 0。
 
-- [ ] **Step 4: 执行生产构建**
+- [ ] **Step 5: 执行生产构建**
 
 Run: `npm run build`
 
 Expected: TypeScript 检查与 Vite 构建通过，退出码为 0。
 
-- [ ] **Step 5: 执行 Cloudflare 打包验证**
+- [ ] **Step 6: 执行 Cloudflare 打包验证**
 
 Run: `npx wrangler deploy --dry-run`
 
 Expected: Wrangler 完成 Worker 与静态资源打包，退出码为 0；不要求真实 KV ID 或 R2 桶名。
 
-- [ ] **Step 6: 检查最终差异并提交文档**
+- [ ] **Step 7: 检查最终差异并提交文档**
 
 ```bash
 git diff --check
 git status --short
-git add README.md
+git add .dev.vars.example README.md docs/superpowers/plans/2026-07-25-cloudflare-dashboard-deployment.md
 git commit -m "docs: explain Dashboard-first Cloudflare deployment"
 ```
