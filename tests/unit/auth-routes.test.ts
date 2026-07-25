@@ -9,6 +9,7 @@ function makeEnv(): Env {
     CONTENT: new MemoryKv() as unknown as KVNamespace,
     ASSETS: { fetch: async () => new Response("asset") } as unknown as Fetcher,
     MEDIA: {} as R2Bucket,
+    LIKES: {} as DurableObjectNamespace,
     GITHUB_CLIENT_ID: "client-id",
     GITHUB_CLIENT_SECRET: "client-secret",
     SESSION_SECRET: "test-secret-with-enough-entropy",

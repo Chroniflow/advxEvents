@@ -6,6 +6,7 @@ import { storyRoutes } from "./stories/routes";
 import { mediaRoutes, uploadRoutes } from "./uploads/routes";
 import { adminRoutes } from "./moderation/admin-routes";
 import { moderationRoutes } from "./moderation/routes";
+import { likeRoutes } from "./likes/routes";
 
 export function createApp() {
   const app = new Hono<{ Bindings: Env }>();
@@ -16,6 +17,7 @@ export function createApp() {
   app.route("/api/media", mediaRoutes());
   app.route("/api/admin", moderationRoutes());
   app.route("/api/admin", adminRoutes());
+  app.route("/api/likes", likeRoutes());
   app.all("*", (context) => context.env.ASSETS.fetch(context.req.raw));
   return app;
 }
