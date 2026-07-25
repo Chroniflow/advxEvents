@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import type { Env } from "./env";
 import { authRoutes } from "./auth/routes";
 import { storyRoutes } from "./stories/routes";
+import { publicStoryRoutes } from "./stories/public-routes";
 import { mediaRoutes, uploadRoutes } from "./uploads/routes";
 import { adminRoutes } from "./moderation/admin-routes";
 import { moderationRoutes } from "./moderation/routes";
@@ -13,6 +14,7 @@ export function createApp() {
   app.get("/api/health", (context) => context.json({ ok: true }));
   app.route("/api/auth", authRoutes());
   app.route("/api/stories", storyRoutes());
+  app.route("/api/public/stories", publicStoryRoutes());
   app.route("/api/uploads", uploadRoutes());
   app.route("/api/media", mediaRoutes());
   app.route("/api/admin", moderationRoutes());

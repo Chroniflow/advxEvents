@@ -1,0 +1,4 @@
+import { createBrowserRouter } from "react-router-dom";
+import { App } from "./App";import { AccountPage } from "./features/account/AccountPage";import { AdminLayout } from "./features/admin/AdminLayout";import { AdminOverview } from "./features/admin/AdminOverview";import { ReviewsPage } from "./features/admin/ReviewsPage";import { UsersPage } from "./features/admin/UsersPage";import { EditorPage } from "./features/editor/EditorPage";import { GalleryPage } from "./features/gallery/GalleryPage";import { StoryPage } from "./features/story/StoryPage";
+export const router=createBrowserRouter([{element:<App/>,children:[{path:"/",element:<GalleryPage/>},{path:"/stories/:storyId",element:<StoryPage/>},{path:"/submit",element:<EditorPage/>},{path:"/account",element:<AccountPage/>},{path:"/admin",element:<AdminLayout/>,children:[{index:true,element:<AdminOverview/>},{path:"reviews",element:<ReviewsPage/>},{path:"users",element:<UsersPage/>}]}]}]);
+

@@ -114,6 +114,25 @@ export function authRoutes() {
     return context.json({ ok: true });
   });
 
+  routes.get("/me", async (context) => {
+    const token = readSessionCookie(context.req.header("Cookie") ?? null);
+    if (!token) return context.json({ error: "Authentication required" }, 401);
+    const session = await new SessionStore(
+      context.env.CONTENT,
+      context.env.SESSION_SECRET,
+    ).resolve(token);
+    if (!session) return context.json({ error: "Authentication required" }, 401);
+    const user = await new UserRepository(context.env.CONTENT).get(session.githubId);
+    if (!user) return context.json({ error: "Authentication required" }, 401);
+    return context.json({
+      ...user,
+      role: resolveRole({
+        storedRole: user.role,
+        login: user.login,
+        bootstrapLogins: parseBootstrapLogins(context.env.ADMIN_GITHUB_USERS),
+      }),
+    });
+  });
+
   return routes;
 }
-

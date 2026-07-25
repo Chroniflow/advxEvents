@@ -82,3 +82,7 @@ export interface PublicStory {
   author: PublicStoryAuthor | PublicAnonymousAuthor;
 }
 
+export interface PublicStoryWithLikes extends PublicStory {
+  likeCount: number;
+}
+

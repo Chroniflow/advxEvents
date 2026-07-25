@@ -12,6 +12,13 @@ export function storyRoutes() {
   const routes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
   routes.use("*", requireUser());
 
+  routes.get("/mine", async (context) => {
+    const stories = await new StoryRepository(context.env.CONTENT).listOwner(
+      context.get("user").githubId,
+    );
+    return context.json({ stories });
+  });
+
   routes.post("/", async (context) => {
     const input = draftInputSchema.safeParse(await context.req.json());
     if (!input.success) return context.json({ error: input.error.flatten() }, 400);

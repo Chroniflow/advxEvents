@@ -1,10 +1,6 @@
-import { APP_NAME } from "../shared/contracts";
+import { Outlet } from "react-router-dom";
+import { SiteHeader } from "./components/SiteHeader";
 
 export function App() {
-  return (
-    <main>
-      <h1>{APP_NAME}</h1>
-    </main>
-  );
+  return <div className="site-shell"><SiteHeader/><Outlet/></div>;
 }
-
