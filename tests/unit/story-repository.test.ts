@@ -27,6 +27,20 @@ function makeRevision(overrides: Partial<StoryRevision> = {}): StoryRevision {
 }
 
 describe("StoryRepository", () => {
+  it("删除后隐藏公开修订并在作者列表附带删除记录", async () => {
+    const repository = new StoryRepository(new MemoryKv() as unknown as KVNamespace);
+    await repository.create(makeRevision());
+    await repository.publishRevision("story-1", "revision-1", "publish-delete");
+    await repository.saveDeletion({
+      storyId: "story-1", deletedAt: "2026-07-25T00:00:00.000Z",
+      purgeAt: "2026-08-08T00:00:00.000Z", deletedByGithubId: "user-1",
+      deletedByRole: "USER", previousStatus: "published", revisionId: "revision-1", contentHash: "hash",
+    });
+
+    expect(await repository.getPublishedRevision("story-1")).toBeNull();
+    expect((await repository.listPublished()).length).toBe(0);
+    expect((await repository.listOwner("user-1"))[0].deletion?.contentHash).toBe("hash");
+  });
   it("keeps the approved revision public while a new revision is pending", async () => {
     const repository = new StoryRepository(new MemoryKv() as unknown as KVNamespace);
     await repository.create(makeRevision());
@@ -49,4 +63,3 @@ describe("StoryRepository", () => {
     expect((await repository.listPublished()).length).toBe(1);
   });
 });
-

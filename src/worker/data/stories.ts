@@ -1,4 +1,4 @@
-import type { StoryRevision } from "../../shared/contracts";
+import type { StoryDeletion, StoryRevision, StoryRevisionView } from "../../shared/contracts";
 import { keys } from "./keys";
 
 export interface StoryRecord {
@@ -36,6 +36,24 @@ export class StoryRepository {
 
   getStory(storyId: string): Promise<StoryRecord | null> {
     return this.kv.get<StoryRecord>(keys.storyMeta(storyId), "json");
+  }
+
+  getDeletion(storyId: string): Promise<StoryDeletion | null> {
+    return this.kv.get<StoryDeletion>(keys.storyDeletion(storyId), "json");
+  }
+
+  async saveDeletion(deletion: StoryDeletion): Promise<void> {
+    await Promise.all([
+      this.kv.put(keys.storyDeletion(deletion.storyId), JSON.stringify(deletion)),
+      this.kv.put(keys.deletionIndex(deletion.purgeAt, deletion.storyId), deletion.storyId),
+    ]);
+  }
+
+  async removeDeletion(deletion: StoryDeletion): Promise<void> {
+    await Promise.all([
+      this.kv.delete(keys.storyDeletion(deletion.storyId)),
+      this.kv.delete(keys.deletionIndex(deletion.purgeAt, deletion.storyId)),
+    ]);
   }
 
   getRevision(storyId: string, revisionId: string): Promise<StoryRevision | null> {
@@ -101,6 +119,7 @@ export class StoryRepository {
   }
 
   async getPublishedRevision(storyId: string): Promise<StoryRevision | null> {
+    if (await this.getDeletion(storyId)) return null;
     const record = await this.getStory(storyId);
     if (!record?.publishedRevisionId) return null;
     return this.getRevision(storyId, record.publishedRevisionId);
@@ -112,28 +131,33 @@ export class StoryRepository {
     return this.getRevision(storyId, record.currentRevisionId);
   }
 
-  async listOwner(githubId: string, limit = 100): Promise<StoryRevision[]> {
+  async listOwner(githubId: string, limit = 100): Promise<StoryRevisionView[]> {
     const list = await this.kv.list({
       prefix: `indexes:owner:${githubId}:`,
       limit,
     });
     const revisions = await Promise.all(
-      list.keys.map(({ name }) => {
+      list.keys.map(async ({ name }) => {
         const storyId = name.split(":").at(-1);
-        return storyId ? this.getCurrentRevision(storyId) : null;
+        if (!storyId) return null;
+        const [revision, deletion] = await Promise.all([
+          this.getCurrentRevision(storyId), this.getDeletion(storyId),
+        ]);
+        return revision ? { ...revision, ...(deletion ? { deletion } : {}) } : null;
       }),
     );
-    return revisions.filter((item): item is StoryRevision => item !== null);
+    return revisions.filter((item): item is StoryRevisionView => item !== null);
   }
 
   async listPending(limit = 50): Promise<StoryRevision[]> {
     const list = await this.kv.list({ prefix: "indexes:pending:", limit });
     const revisions = await Promise.all(
-      list.keys.map(({ name }) => {
+      list.keys.map(async ({ name }) => {
         const parts = name.split(":");
         const revisionId = parts.at(-1);
         const storyId = parts.at(-2);
-        return storyId && revisionId ? this.getRevision(storyId, revisionId) : null;
+        if (!storyId || !revisionId || await this.getDeletion(storyId)) return null;
+        return this.getRevision(storyId, revisionId);
       }),
     );
     return revisions.filter(
@@ -159,10 +183,62 @@ export class StoryRepository {
       list.keys.map(async ({ name }) => {
         const revisionId = await this.kv.get(name);
         const storyId = name.split(":").at(-1);
-        if (!revisionId || !storyId) return null;
+        if (!revisionId || !storyId || await this.getDeletion(storyId)) return null;
         return this.getRevision(storyId, revisionId);
       }),
     );
     return revisions.filter((item): item is StoryRevision => item !== null);
+  }
+
+  async removeActiveIndexes(revision: StoryRevision): Promise<void> {
+    const removals: Promise<void>[] = [];
+    if (revision.publishedAt) removals.push(this.kv.delete(keys.publishedIndex(revision.publishedAt, revision.storyId)));
+    if (revision.submittedAt) removals.push(this.kv.delete(keys.pendingIndex(revision.submittedAt, revision.storyId, revision.revisionId)));
+    await Promise.all(removals);
+  }
+
+  async restoreIndexes(revision: StoryRevision): Promise<void> {
+    if (revision.status === "published" && revision.publishedAt) {
+      await this.kv.put(keys.publishedIndex(revision.publishedAt, revision.storyId), revision.revisionId);
+    } else if (revision.status === "pending" && revision.submittedAt) {
+      await this.kv.put(keys.pendingIndex(revision.submittedAt, revision.storyId, revision.revisionId), "1");
+    }
+  }
+
+  async listRevisions(storyId: string): Promise<StoryRevision[]> {
+    const list = await this.kv.list({ prefix: `stories:${storyId}:revision:` });
+    const revisions = await Promise.all(list.keys.map(({ name }) => this.kv.get<StoryRevision>(name, "json")));
+    return revisions.filter((item): item is StoryRevision => item !== null);
+  }
+
+  async listExpiredDeletions(now: string, limit = 50): Promise<StoryDeletion[]> {
+    const list = await this.kv.list({ prefix: "indexes:deletions:", limit });
+    const deletions = await Promise.all(list.keys.map(async ({ name }) => {
+      const storyId = await this.kv.get(name);
+      return storyId ? this.getDeletion(storyId) : null;
+    }));
+    return deletions.filter((item): item is StoryDeletion => item !== null && item.purgeAt <= now);
+  }
+
+  async isAssetReferencedElsewhere(assetId: string, excludedStoryId: string): Promise<boolean> {
+    const list = await this.kv.list({ prefix: "stories:" });
+    for (const { name } of list.keys) {
+      if (!name.includes(":revision:") || name.startsWith(`stories:${excludedStoryId}:`)) continue;
+      const revision = await this.kv.get<StoryRevision>(name, "json");
+      if (revision?.images.some((image) => image.assetId === assetId)) return true;
+    }
+    return false;
+  }
+
+  async purgeStory(deletion: StoryDeletion): Promise<void> {
+    const record = await this.getStory(deletion.storyId);
+    if (!record) return;
+    const revisions = await this.listRevisions(deletion.storyId);
+    await Promise.all([
+      ...revisions.map((revision) => this.kv.delete(keys.storyRevision(revision.storyId, revision.revisionId))),
+      this.kv.delete(keys.storyMeta(deletion.storyId)),
+      this.kv.delete(keys.ownerIndex(record.ownerGithubId, deletion.storyId)),
+      this.removeDeletion(deletion),
+    ]);
   }
 }

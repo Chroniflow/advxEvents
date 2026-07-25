@@ -60,6 +60,21 @@ export interface StoryRevision {
   publishedAt: string | null;
 }
 
+export interface StoryDeletion {
+  storyId: string;
+  deletedAt: string;
+  purgeAt: string;
+  deletedByGithubId: string;
+  deletedByRole: Role;
+  previousStatus: StoryStatus;
+  revisionId: string;
+  contentHash: string;
+}
+
+export interface StoryRevisionView extends StoryRevision {
+  deletion?: StoryDeletion;
+}
+
 export interface PublicStoryAuthor {
   anonymous: false;
   login: string;
@@ -85,4 +100,3 @@ export interface PublicStory {
 export interface PublicStoryWithLikes extends PublicStory {
   likeCount: number;
 }
-

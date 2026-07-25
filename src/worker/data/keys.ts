@@ -3,6 +3,10 @@ export const keys = {
   storyMeta: (storyId: string) => `stories:${storyId}:meta`,
   storyRevision: (storyId: string, revisionId: string) =>
     `stories:${storyId}:revision:${revisionId}`,
+  storyDeletion: (storyId: string) => `stories:${storyId}:deletion`,
+  deletionIndex: (purgeAt: string, storyId: string) =>
+    `indexes:deletions:${purgeAt}:${storyId}`,
+  gcObject: (objectKey: string) => `gc:r2:${encodeURIComponent(objectKey)}`,
   publishedIndex: (publishedAt: string, storyId: string) =>
     `indexes:published:${publishedAt}:${storyId}`,
   pendingIndex: (submittedAt: string, storyId: string, revisionId: string) =>
