@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 
+import type { StoryImage } from "../../shared/contracts";
 import { draftInputSchema } from "../../shared/schemas";
 import type { AuthVariables } from "../auth/middleware";
 import { requireUser } from "../auth/middleware";
@@ -25,18 +26,14 @@ export function storyRoutes() {
     if (!input.success) return context.json({ error: input.error.flatten() }, 400);
     const assets = new AssetRepository(context.env.CONTENT);
     try {
-      await Promise.all(
-        input.data.images.map((image) =>
-          assets.getOwned(image.assetId, context.get("user").githubId),
-        ),
-      );
+      const images = await normalizeImages(assets, context.get("user").githubId, input.data.images);
+      const revision = await new StoryService(
+        new StoryRepository(context.env.CONTENT),
+      ).createDraft(context.get("user"), { ...input.data, images });
+      return context.json(revision, 201);
     } catch (error) {
       return context.json({ error: (error as Error).message }, 403);
     }
-    const revision = await new StoryService(
-      new StoryRepository(context.env.CONTENT),
-    ).createDraft(context.get("user"), input.data);
-    return context.json(revision, 201);
   });
 
   routes.put("/:storyId/draft", async (context) => {
@@ -44,14 +41,10 @@ export function storyRoutes() {
     if (!input.success) return context.json({ error: input.error.flatten() }, 400);
     try {
       const assets = new AssetRepository(context.env.CONTENT);
-      await Promise.all(
-        input.data.images.map((image) =>
-          assets.getOwned(image.assetId, context.get("user").githubId),
-        ),
-      );
+      const images = await normalizeImages(assets, context.get("user").githubId, input.data.images);
       const revision = await new StoryService(
         new StoryRepository(context.env.CONTENT),
-      ).updateDraft(context.get("user"), context.req.param("storyId"), input.data);
+      ).updateDraft(context.get("user"), context.req.param("storyId"), { ...input.data, images });
       return context.json(revision);
     } catch (error) {
       return context.json({ error: (error as Error).message }, 409);
@@ -110,4 +103,25 @@ export function storyRoutes() {
   });
 
   return routes;
+}
+
+export async function normalizeImages(
+  assets: AssetRepository,
+  githubId: string,
+  images: StoryImage[],
+): Promise<StoryImage[]> {
+  return Promise.all(images.map(async (image) => {
+    const asset = await assets.getOwned(image.assetId, githubId);
+    if (!asset) throw new Error("Asset not found");
+    return {
+      assetId: asset.assetId,
+      objectKey: asset.objectKey,
+      contentType: asset.contentType,
+      width: asset.width,
+      height: asset.height,
+      size: asset.size,
+      caption: image.caption,
+      order: image.order,
+    };
+  }));
 }

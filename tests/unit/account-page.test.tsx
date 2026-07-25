@@ -53,6 +53,19 @@ function renderAccount() {
 }
 
 describe("AccountPage 退出登录", () => {
+  it("作者确认后删除帖子并显示恢复操作", async () => {
+    const story = { storyId: "s1", revisionId: "r1", authorGithubId: "123", authorLogin: "chroniflow", authorName: "Chroniflow", authorAvatarUrl: "", authorProfileUrl: "", title: "待删除", body: "正文", anonymous: false, images: [], status: "published" as const, createdAt: "2026-07-01T00:00:00Z", updatedAt: "2026-07-01T00:00:00Z", submittedAt: null, publishedAt: "2026-07-01T00:00:00Z" };
+    vi.spyOn(api, "myStories").mockResolvedValue({ stories: [story] });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const deletion = { storyId: "s1", deletedAt: "2026-07-25T00:00:00Z", purgeAt: "2026-08-08T00:00:00Z", deletedByGithubId: "123", deletedByRole: "USER" as const, previousStatus: "published" as const, revisionId: "r1", contentHash: "h" };
+    const remove = vi.spyOn(api, "deleteStory").mockResolvedValue(deletion);
+    renderAccount();
+
+    await userEvent.click(await screen.findByRole("button", { name: "删除帖子" }));
+    expect(remove).toHaveBeenCalledWith("s1");
+    expect(await screen.findByRole("button", { name: "恢复帖子" })).toBeInTheDocument();
+  });
+
   it("退出成功后清除用户并跳转首页", async () => {
     vi.spyOn(api, "myStories").mockResolvedValue({ stories: [] });
     const logout = vi.spyOn(api, "logout").mockResolvedValue({ ok: true });

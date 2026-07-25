@@ -22,8 +22,14 @@ export class GarbageCollectionService {
     for (const { name } of queued.keys) {
       const item = await this.kv.get<QueuedObject>(name, "json");
       if (!item) continue;
+      if (await this.stories.isAssetReferencedElsewhere(item.assetId, "")) {
+        await this.kv.delete(name);
+        continue;
+      }
       try {
-        await this.bucket.delete(item.objectKey);
+        const asset = await this.assets.get(item.assetId);
+        if (!asset) { await this.kv.delete(name); continue; }
+        await this.bucket.delete(asset.objectKey);
         await Promise.all([this.assets.delete(item.assetId), this.kv.delete(name)]);
         stats.deletedObjects++;
       } catch {
@@ -32,22 +38,27 @@ export class GarbageCollectionService {
     }
 
     for (const deletion of await this.stories.listExpiredDeletions(now.toISOString())) {
-      if (!await this.stories.getDeletion(deletion.storyId)) continue;
+      const currentDeletion = await this.stories.getDeletion(deletion.storyId);
+      if (!currentDeletion || currentDeletion.deletedAt !== deletion.deletedAt || currentDeletion.purgeAt !== deletion.purgeAt) continue;
       const revisions = await this.stories.listRevisions(deletion.storyId);
       const images = new Map(revisions.flatMap((revision) => revision.images).map((image) => [image.assetId, image]));
       for (const image of images.values()) {
         if (await this.stories.isAssetReferencedElsewhere(image.assetId, deletion.storyId)) continue;
+        const asset = await this.assets.get(image.assetId);
+        if (!asset) continue;
         try {
-          await this.bucket.delete(image.objectKey);
+          await this.bucket.delete(asset.objectKey);
           await this.assets.delete(image.assetId);
           stats.deletedObjects++;
         } catch {
-          const queuedObject: QueuedObject = { assetId: image.assetId, objectKey: image.objectKey, attempts: 1 };
-          await this.kv.put(keys.gcObject(image.objectKey), JSON.stringify(queuedObject));
+          const queuedObject: QueuedObject = { assetId: image.assetId, objectKey: asset.objectKey, attempts: 1 };
+          await this.kv.put(keys.gcObject(asset.objectKey), JSON.stringify(queuedObject));
           stats.queuedObjects++;
         }
       }
-      try { await this.purgeLikes(deletion.storyId); } catch { /* retriable data is non-critical */ }
+      try { await this.purgeLikes(deletion.storyId); } catch { continue; }
+      const deletionBeforePurge = await this.stories.getDeletion(deletion.storyId);
+      if (!deletionBeforePurge || deletionBeforePurge.deletedAt !== deletion.deletedAt || deletionBeforePurge.purgeAt !== deletion.purgeAt) continue;
       await this.stories.purgeStory(deletion);
       stats.purgedStories++;
     }

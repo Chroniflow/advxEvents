@@ -42,4 +42,14 @@ describe("StoryDeletionService", () => {
 
     expect((await service.restore(owner, "story-1")).status).toBe("draft");
   });
+
+  it("保留期结束后不能恢复", async () => {
+    const repository = new StoryRepository(new MemoryKv() as unknown as KVNamespace);
+    await repository.create(story());
+    const service = new StoryDeletionService(repository, () => new Date("2026-07-01T00:00:00Z"));
+    await service.delete(owner, "story-1");
+
+    await expect(new StoryDeletionService(repository, () => new Date("2026-07-16T00:00:00Z")).restore(owner, "story-1"))
+      .rejects.toThrow("retention period expired");
+  });
 });

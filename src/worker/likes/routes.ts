@@ -18,6 +18,8 @@ export function likeRoutes() {
   });
 
   routes.get("/:storyId", async (context) => {
+    const story = await new StoryRepository(context.env.CONTENT).getPublishedRevision(context.req.param("storyId"));
+    if (!story || story.status !== "published") return context.json({ error: "Story not found" }, 404);
     const token = readSessionCookie(context.req.header("Cookie") ?? null);
     const session = token
       ? await new SessionStore(context.env.CONTENT, context.env.SESSION_SECRET).resolve(token)
@@ -45,6 +47,8 @@ export function likeRoutes() {
   });
 
   routes.delete("/:storyId", requireUser(), async (context) => {
+    const story = await new StoryRepository(context.env.CONTENT).getPublishedRevision(context.req.param("storyId"));
+    if (!story || story.status !== "published") return context.json({ error: "Story not found" }, 404);
     const response = await likeDirectory(context.env).fetch(
       new Request(
         `https://likes/stories/${encodeURIComponent(context.req.param("storyId"))}`,
@@ -59,4 +63,3 @@ export function likeRoutes() {
 
   return routes;
 }
-

@@ -35,16 +35,22 @@ export class StoryDeletionService {
       this.stories.getStory(storyId), this.stories.getDeletion(storyId), this.stories.getCurrentRevision(storyId),
     ]);
     if (!record || !deletion || !current) throw new Error("Deleted story not found");
+    if (this.now().getTime() >= new Date(deletion.purgeAt).getTime()) {
+      throw new Error("Story retention period expired");
+    }
     const actorIsStaff = actor.role === "STAFF" || actor.role === "ADMIN";
     const authorCanRestore = record.ownerGithubId === actor.githubId && deletion.deletedByRole === "USER";
     if (!actorIsStaff && !authorCanRestore) throw new Error("Insufficient permissions");
-    const unchanged = await hashStoryContent(current) === deletion.contentHash;
+    const original = await this.stories.getRevision(storyId, deletion.revisionId);
+    if (!original) throw new Error("Deleted revision not found");
+    const unchanged = current.revisionId === deletion.revisionId
+      || await hashStoryContent(current) === deletion.contentHash;
     const restorePrevious = deletion.deletedByRole !== "USER" || unchanged;
     const restored: StoryRevision = {
-      ...current,
+      ...(restorePrevious ? original : current),
       status: restorePrevious ? deletion.previousStatus : "draft",
-      submittedAt: restorePrevious ? current.submittedAt : null,
-      publishedAt: restorePrevious ? current.publishedAt : null,
+      submittedAt: restorePrevious ? original.submittedAt : null,
+      publishedAt: restorePrevious ? original.publishedAt : null,
       updatedAt: this.now().toISOString(),
     };
     await this.stories.saveRevision(restored);

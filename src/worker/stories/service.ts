@@ -39,6 +39,7 @@ export class StoryService {
   ): Promise<StoryRevision> {
     const current = await this.requireOwned(user, storyId);
     const deleted = await this.stories.getDeletion(storyId);
+    if (deleted && deleted.deletedByRole !== "USER") throw new Error("Story is not editable");
     if (!deleted && current.status !== "draft" && current.status !== "rejected") {
       throw new Error("Story is not editable");
     }
@@ -71,6 +72,7 @@ export class StoryService {
   }
 
   async withdraw(user: UserProfile, storyId: string): Promise<StoryRevision> {
+    if (await this.stories.getDeletion(storyId)) throw new Error("Restore story before withdrawing");
     const current = await this.requireOwned(user, storyId);
     const now = new Date().toISOString();
     const withdrawn: StoryRevision = {

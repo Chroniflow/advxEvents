@@ -30,6 +30,8 @@ export const api = {
   submitStory: (storyId: string) => request<StoryRevision>(`/api/stories/${storyId}/submit`, { method: "POST" }),
   upload: (form: FormData) => request<Record<string, unknown>>("/api/uploads", { method: "POST", body: form }),
   reviews: () => request<{ stories: StoryRevision[] }>("/api/admin/reviews"),
+  deletedStories: () => request<{ stories: StoryRevisionView[] }>("/api/admin/deleted"),
+  runGc: () => request<{ purgedStories: number; deletedObjects: number; queuedObjects: number }>("/api/admin/gc", { method: "POST" }),
   review: (storyId: string, revisionId: string, decision: "approve" | "reject", reason?: string) => request<StoryRevision>(`/api/admin/reviews/${storyId}/${revisionId}`, { method: "POST", body: JSON.stringify({ decision, reason }) }),
   users: (query = "") => request<{ users: UserProfile[] }>(`/api/admin/users?query=${encodeURIComponent(query)}`),
   setRole: (githubId: string, role: string) => request<UserProfile>(`/api/admin/users/${githubId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),

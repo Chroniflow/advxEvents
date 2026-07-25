@@ -19,6 +19,10 @@ export function moderationRoutes() {
     return context.json({ stories });
   });
 
+  routes.get("/deleted", async (context) => {
+    return context.json({ stories: await new StoryRepository(context.env.CONTENT).listDeleted() });
+  });
+
   routes.post("/reviews/:storyId/:revisionId", async (context) => {
     const input = reviewDecisionSchema.safeParse(await context.req.json());
     if (!input.success) return context.json({ error: input.error.flatten() }, 400);
@@ -86,4 +90,3 @@ export function moderationRoutes() {
 
   return routes;
 }
-

@@ -16,6 +16,7 @@ export class ModerationService {
     revisionId: string,
   ): Promise<StoryRevision> {
     if (actor.role !== "STAFF" && actor.role !== "ADMIN") throw new Error("Staff required");
+    if (await this.stories.getDeletion(storyId)) throw new Error("Deleted story cannot be reviewed");
     const revision = await this.stories.getRevision(storyId, revisionId);
     if (!revision || revision.status !== "pending") throw new Error("Pending revision not found");
     await this.stories.publishRevision(
@@ -45,6 +46,7 @@ export class ModerationService {
   ): Promise<StoryRevision> {
     if (actor.role !== "STAFF" && actor.role !== "ADMIN") throw new Error("Staff required");
     if (!reason.trim()) throw new Error("Rejection reason required");
+    if (await this.stories.getDeletion(storyId)) throw new Error("Deleted story cannot be reviewed");
     const revision = await this.stories.getRevision(storyId, revisionId);
     if (!revision || revision.status !== "pending") throw new Error("Pending revision not found");
     const rejected = await this.stories.setRevisionStatus(storyId, revisionId, "rejected");
@@ -79,4 +81,3 @@ export class ModerationService {
     return next;
   }
 }
-

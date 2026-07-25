@@ -2,14 +2,14 @@ import { LogOut, PenLine, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 
-import type { StoryRevision } from "../../../shared/contracts";
+import type { StoryRevisionView } from "../../../shared/contracts";
 import type { AuthOutletContext } from "../../App";
 import { api } from "../../api/client";
 
 export function AccountPage() {
   const { user, setUser } = useOutletContext<AuthOutletContext>();
   const navigate = useNavigate();
-  const [stories, setStories] = useState<StoryRevision[]>([]);
+  const [stories, setStories] = useState<StoryRevisionView[]>([]);
   const [storiesError, setStoriesError] = useState("");
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -39,6 +39,21 @@ export function AccountPage() {
     } finally {
       setLogoutBusy(false);
     }
+  }
+
+  async function removeStory(storyId: string) {
+    if (!window.confirm("帖子将保留 14 天，期间可以恢复。确认删除？")) return;
+    try {
+      const deletion = await api.deleteStory(storyId);
+      setStories((items) => items.map((item) => item.storyId === storyId ? { ...item, deletion } : item));
+    } catch { setStoriesError("删除失败，请重试。"); }
+  }
+
+  async function restoreStory(storyId: string) {
+    try {
+      const restored = await api.restoreStory(storyId);
+      setStories((items) => items.map((item) => item.storyId === storyId ? restored : item));
+    } catch { setStoriesError("恢复失败，请重试。"); }
   }
 
   if (!user) {
@@ -85,6 +100,14 @@ export function AccountPage() {
             </div>
             <h3>{story.title}</h3>
             <p>{story.body.slice(0, 180)}</p>
+            {story.deletion && <p className="notice">保留至 {new Date(story.deletion.purgeAt).toLocaleString("zh-CN")}</p>}
+            <div className="inline-actions">
+              {story.deletion ? (
+                <button className="button" onClick={() => restoreStory(story.storyId)}>恢复帖子</button>
+              ) : (
+                <button className="button button--danger" onClick={() => removeStory(story.storyId)}>删除帖子</button>
+              )}
+            </div>
           </article>
         ))}
         {!stories.length && !storiesError && <div className="empty-state">你还没有投稿。</div>}

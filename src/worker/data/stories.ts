@@ -206,23 +206,38 @@ export class StoryRepository {
   }
 
   async listRevisions(storyId: string): Promise<StoryRevision[]> {
-    const list = await this.kv.list({ prefix: `stories:${storyId}:revision:` });
-    const revisions = await Promise.all(list.keys.map(({ name }) => this.kv.get<StoryRevision>(name, "json")));
+    const keys = await this.listAllKeys(`stories:${storyId}:revision:`);
+    const revisions = await Promise.all(keys.map(({ name }) => this.kv.get<StoryRevision>(name, "json")));
     return revisions.filter((item): item is StoryRevision => item !== null);
   }
 
   async listExpiredDeletions(now: string, limit = 50): Promise<StoryDeletion[]> {
-    const list = await this.kv.list({ prefix: "indexes:deletions:", limit });
-    const deletions = await Promise.all(list.keys.map(async ({ name }) => {
+    const keys = await this.listAllKeys("indexes:deletions:");
+    const deletions = await Promise.all(keys.map(async ({ name }) => {
       const storyId = await this.kv.get(name);
       return storyId ? this.getDeletion(storyId) : null;
     }));
-    return deletions.filter((item): item is StoryDeletion => item !== null && item.purgeAt <= now);
+    return deletions.filter((item): item is StoryDeletion => item !== null && item.purgeAt <= now).slice(0, limit);
+  }
+
+  async listDeleted(limit = 50): Promise<StoryRevisionView[]> {
+    const list = await this.kv.list({ prefix: "indexes:deletions:", limit });
+    const candidates = await Promise.all(list.keys.map(async ({ name }) => {
+      const storyId = await this.kv.get(name);
+      if (!storyId) return null;
+      const [revision, deletion] = await Promise.all([this.getCurrentRevision(storyId), this.getDeletion(storyId)]);
+      return revision && deletion ? { ...revision, deletion } : null;
+    }));
+    const items: StoryRevisionView[] = [];
+    for (const candidate of candidates) {
+      if (candidate) items.push(candidate);
+    }
+    return items;
   }
 
   async isAssetReferencedElsewhere(assetId: string, excludedStoryId: string): Promise<boolean> {
-    const list = await this.kv.list({ prefix: "stories:" });
-    for (const { name } of list.keys) {
+    const keys = await this.listAllKeys("stories:");
+    for (const { name } of keys) {
       if (!name.includes(":revision:") || name.startsWith(`stories:${excludedStoryId}:`)) continue;
       const revision = await this.kv.get<StoryRevision>(name, "json");
       if (revision?.images.some((image) => image.assetId === assetId)) return true;
@@ -230,9 +245,24 @@ export class StoryRepository {
     return false;
   }
 
+  private async listAllKeys(prefix: string): Promise<{ name: string }[]> {
+    const keys: { name: string }[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await this.kv.list({ prefix, cursor });
+      keys.push(...page.keys);
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+    return keys;
+  }
+
   async purgeStory(deletion: StoryDeletion): Promise<void> {
-    const record = await this.getStory(deletion.storyId);
-    if (!record) return;
+    const [record, currentDeletion] = await Promise.all([
+      this.getStory(deletion.storyId), this.getDeletion(deletion.storyId),
+    ]);
+    if (!record || !currentDeletion
+      || currentDeletion.deletedAt !== deletion.deletedAt
+      || currentDeletion.purgeAt !== deletion.purgeAt) return;
     const revisions = await this.listRevisions(deletion.storyId);
     await Promise.all([
       ...revisions.map((revision) => this.kv.delete(keys.storyRevision(revision.storyId, revision.revisionId))),
