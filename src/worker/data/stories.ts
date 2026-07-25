@@ -126,6 +126,33 @@ export class StoryRepository {
     return revisions.filter((item): item is StoryRevision => item !== null);
   }
 
+  async listPending(limit = 50): Promise<StoryRevision[]> {
+    const list = await this.kv.list({ prefix: "indexes:pending:", limit });
+    const revisions = await Promise.all(
+      list.keys.map(({ name }) => {
+        const parts = name.split(":");
+        const revisionId = parts.at(-1);
+        const storyId = parts.at(-2);
+        return storyId && revisionId ? this.getRevision(storyId, revisionId) : null;
+      }),
+    );
+    return revisions.filter(
+      (item): item is StoryRevision => item !== null && item.status === "pending",
+    );
+  }
+
+  async setRevisionStatus(
+    storyId: string,
+    revisionId: string,
+    status: StoryRevision["status"],
+  ): Promise<StoryRevision> {
+    const revision = await this.getRevision(storyId, revisionId);
+    if (!revision) throw new Error("Story revision not found");
+    const next = { ...revision, status, updatedAt: new Date().toISOString() };
+    await this.kv.put(keys.storyRevision(storyId, revisionId), JSON.stringify(next));
+    return next;
+  }
+
   async listPublished(limit = 50): Promise<StoryRevision[]> {
     const list = await this.kv.list({ prefix: "indexes:published:", limit });
     const revisions = await Promise.all(
@@ -139,4 +166,3 @@ export class StoryRepository {
     return revisions.filter((item): item is StoryRevision => item !== null);
   }
 }
-

@@ -19,5 +19,21 @@ export class UserRepository {
     await this.upsert(next);
     return next;
   }
-}
 
+  async search(query: string, limit = 25): Promise<UserProfile[]> {
+    const normalized = query.trim().toLowerCase();
+    const list = await this.kv.list({ prefix: "users:", limit: 1_000 });
+    const users = await Promise.all(
+      list.keys.map(({ name }) => this.kv.get<UserProfile>(name, "json")),
+    );
+    return users
+      .filter((user): user is UserProfile => user !== null)
+      .filter(
+        (user) =>
+          !normalized ||
+          user.login.toLowerCase().includes(normalized) ||
+          user.name?.toLowerCase().includes(normalized),
+      )
+      .slice(0, limit);
+  }
+}

@@ -13,5 +13,7 @@ export const keys = {
   session: (digest: string) => `sessions:${digest}`,
   oauthState: (digest: string) => `oauth-state:${digest}`,
   asset: (assetId: string) => `assets:${assetId}`,
+  review: (storyId: string, revisionId: string) =>
+    `reviews:${storyId}:${revisionId}`,
   audit: (timestamp: string, eventId: string) => `audit:${timestamp}:${eventId}`,
 };
