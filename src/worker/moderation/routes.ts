@@ -19,6 +19,10 @@ export function moderationRoutes() {
     return context.json({ stories });
   });
 
+  routes.get("/published", async (context) => {
+    return context.json({ stories: await new StoryRepository(context.env.CONTENT).listPublished() });
+  });
+
   routes.get("/deleted", async (context) => {
     return context.json({ stories: await new StoryRepository(context.env.CONTENT).listDeleted() });
   });
