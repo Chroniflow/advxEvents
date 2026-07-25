@@ -7,6 +7,7 @@ import { StoryRepository } from "../data/stories";
 import type { Env } from "../env";
 import { AssetRepository } from "../uploads/assets";
 import { StoryService } from "./service";
+import { StoryDeletionService } from "./deletion-service";
 
 export function storyRoutes() {
   const routes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -80,6 +81,31 @@ export function storyRoutes() {
       );
     } catch (error) {
       return context.json({ error: (error as Error).message }, 409);
+    }
+  });
+
+  routes.delete("/:storyId", async (context) => {
+    try {
+      const deletion = await new StoryDeletionService(new StoryRepository(context.env.CONTENT)).delete(
+        context.get("user"), context.req.param("storyId"),
+      );
+      return context.json(deletion);
+    } catch (error) {
+      const message = (error as Error).message;
+      const status = message === "Insufficient permissions" ? 403 : message === "Story not found" ? 404 : 409;
+      return context.json({ error: message }, status);
+    }
+  });
+
+  routes.post("/:storyId/restore", async (context) => {
+    try {
+      return context.json(await new StoryDeletionService(new StoryRepository(context.env.CONTENT)).restore(
+        context.get("user"), context.req.param("storyId"),
+      ));
+    } catch (error) {
+      const message = (error as Error).message;
+      const status = message === "Insufficient permissions" ? 403 : message === "Deleted story not found" ? 404 : 409;
+      return context.json({ error: message }, status);
     }
   });
 

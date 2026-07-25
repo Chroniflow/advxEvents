@@ -1,4 +1,4 @@
-import type { PublicStoryWithLikes, StoryRevision, UserProfile } from "../../shared/contracts";
+import type { PublicStoryWithLikes, StoryDeletion, StoryRevision, StoryRevisionView, UserProfile } from "../../shared/contracts";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -23,7 +23,9 @@ export const api = {
   like: (storyId: string, liked: boolean) => request<{ count: number; liked: boolean }>(`/api/likes/${storyId}`, { method: liked ? "PUT" : "DELETE" }),
   me: () => request<UserProfile>("/api/auth/me"),
   logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
-  myStories: () => request<{ stories: StoryRevision[] }>("/api/stories/mine"),
+  myStories: () => request<{ stories: StoryRevisionView[] }>("/api/stories/mine"),
+  deleteStory: (storyId: string) => request<StoryDeletion>(`/api/stories/${storyId}`, { method: "DELETE" }),
+  restoreStory: (storyId: string) => request<StoryRevision>(`/api/stories/${storyId}/restore`, { method: "POST" }),
   createStory: (input: unknown) => request<StoryRevision>("/api/stories", { method: "POST", body: JSON.stringify(input) }),
   submitStory: (storyId: string) => request<StoryRevision>(`/api/stories/${storyId}/submit`, { method: "POST" }),
   upload: (form: FormData) => request<Record<string, unknown>>("/api/uploads", { method: "POST", body: form }),

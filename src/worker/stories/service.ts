@@ -38,7 +38,8 @@ export class StoryService {
     input: DraftInput,
   ): Promise<StoryRevision> {
     const current = await this.requireOwned(user, storyId);
-    if (current.status !== "draft" && current.status !== "rejected") {
+    const deleted = await this.stories.getDeletion(storyId);
+    if (!deleted && current.status !== "draft" && current.status !== "rejected") {
       throw new Error("Story is not editable");
     }
     const parsed = draftInputSchema.parse(input);
@@ -56,6 +57,7 @@ export class StoryService {
   }
 
   async submit(user: UserProfile, storyId: string): Promise<StoryRevision> {
+    if (await this.stories.getDeletion(storyId)) throw new Error("Restore story before submitting");
     const current = await this.requireOwned(user, storyId);
     const now = new Date().toISOString();
     const revision: StoryRevision = {
@@ -99,4 +101,3 @@ export class StoryService {
     return current;
   }
 }
-
