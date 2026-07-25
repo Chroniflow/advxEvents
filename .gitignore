@@ -3,4 +3,5 @@ node_modules/
 dist/
 .dev.vars
 .wrangler/
-
+test-results/
+playwright-report/

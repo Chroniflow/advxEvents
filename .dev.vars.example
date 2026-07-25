@@ -1,0 +1,3 @@
+GITHUB_CLIENT_ID=replace-with-github-oauth-client-id
+GITHUB_CLIENT_SECRET=replace-with-github-oauth-client-secret
+SESSION_SECRET=replace-with-at-least-32-random-characters
