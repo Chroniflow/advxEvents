@@ -8,6 +8,7 @@ import { AuditRepository } from "../data/audit";
 import { UserRepository } from "../data/users";
 import type { Env } from "../env";
 import { AdminService } from "./admin-service";
+import { garbageCollection } from "../gc/service";
 
 export function adminRoutes() {
   const routes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -35,6 +36,7 @@ export function adminRoutes() {
     }
   });
 
+  routes.post("/gc", async (context) => context.json(await garbageCollection(context.env).run()));
+
   return routes;
 }
-

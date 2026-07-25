@@ -38,9 +38,13 @@ export class LikeDirectory {
       return Response.json(rows.map((row) => ({ storyId: row.story_id, count: row.count })));
     }
 
-    const match = url.pathname.match(/^\/stories\/([^/]+)$/);
+    const match = url.pathname.match(/^\/stories\/([^/]+)(?:\/purge)?$/);
     if (!match) return Response.json({ error: "Not found" }, { status: 404 });
     const storyId = decodeURIComponent(match[1]);
+    if (url.pathname.endsWith("/purge") && request.method === "DELETE") {
+      this.state.storage.sql.exec("DELETE FROM likes WHERE story_id = ?", storyId);
+      return Response.json({ ok: true });
+    }
     const body = request.method === "GET" ? null : await request.json<{ userId?: string }>();
     const userId = body?.userId ?? url.searchParams.get("userId");
 

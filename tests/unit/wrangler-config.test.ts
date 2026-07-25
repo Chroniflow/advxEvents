@@ -19,6 +19,7 @@ interface WranglerConfig {
   durable_objects?: {
     bindings?: Array<{ name: string; class_name: string }>;
   };
+  triggers?: { crons?: string[] };
 }
 
 const config = JSON.parse(
@@ -47,5 +48,9 @@ describe("开源 Wrangler 配置", () => {
       not_found_handling: "single-page-application",
       run_worker_first: ["/api/*"],
     });
+  });
+
+  it("每天触发一次垃圾回收", () => {
+    expect(config.triggers?.crons).toEqual(["0 3 * * *"]);
   });
 });
