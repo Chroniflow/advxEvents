@@ -22,6 +22,7 @@ export const api = {
   likeState: (storyId: string) => request<{ count: number; liked: boolean }>(`/api/likes/${storyId}`),
   like: (storyId: string, liked: boolean) => request<{ count: number; liked: boolean }>(`/api/likes/${storyId}`, { method: liked ? "PUT" : "DELETE" }),
   me: () => request<UserProfile>("/api/auth/me"),
+  logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
   myStories: () => request<{ stories: StoryRevision[] }>("/api/stories/mine"),
   createStory: (input: unknown) => request<StoryRevision>("/api/stories", { method: "POST", body: JSON.stringify(input) }),
   submitStory: (storyId: string) => request<StoryRevision>(`/api/stories/${storyId}/submit`, { method: "POST" }),
