@@ -3,6 +3,7 @@
   "name": "advx-anecdotes",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-07-24",
+  "keep_vars": true,
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
@@ -10,14 +11,12 @@
   },
   "kv_namespaces": [
     {
-      "binding": "CONTENT",
-      "id": "00000000000000000000000000000000"
+      "binding": "CONTENT"
     }
   ],
   "r2_buckets": [
     {
-      "binding": "MEDIA",
-      "bucket_name": "advx-anecdotes-media"
+      "binding": "MEDIA"
     }
   ],
   "durable_objects": {
@@ -33,9 +32,5 @@
       "tag": "v1",
       "new_sqlite_classes": ["LikeDirectory"]
     }
-  ],
-  "vars": {
-    "ADMIN_GITHUB_USERS": "icebraker",
-    "APP_ORIGIN": "http://localhost:8787"
-  }
+  ]
 }
